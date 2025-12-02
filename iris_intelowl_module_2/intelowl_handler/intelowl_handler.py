@@ -230,9 +230,33 @@ class IntelowlHandler(object):
 
         return InterfaceStatus.I2Success(data=rendered)
 
+    def _all_analyzers_completed(self, job_result):
+        """
+        Check if all analyzers in the job have completed (SUCCESS or FAILED status)
+        
+        :param job_result: The job result from IntelOwl API
+        :return: bool - True if all analyzers are completed, False otherwise
+        """
+        analyzer_reports = job_result.get("analyzer_reports", [])
+        
+        # If no analyzer reports yet, not completed
+        if not analyzer_reports:
+            return False
+        
+        completed_statuses = {"SUCCESS", "FAILED"}
+        
+        for analyzer in analyzer_reports:
+            analyzer_status = analyzer.get("status", "").upper()
+            if analyzer_status not in completed_statuses:
+                self.log.debug(f"Analyzer '{analyzer.get('name', 'unknown')}' still in status: {analyzer_status}")
+                return False
+        
+        return True
+
     def get_job_result(self, job_id):
         """
-        Periodically fetches job status until it's finished to get the results
+        Periodically fetches job status until it's finished to get the results.
+        Waits for both job status AND all analyzer statuses to be completed.
 
         :param job_id: Union[int, str], The job ID to query
         :return:
@@ -249,11 +273,25 @@ class IntelowlHandler(object):
         status = job_result["status"]
 
         spent_time = 0
+        # Wait for job status to not be pending/running
         while (status == "pending" or status == "running") and spent_time <= max_job_time:
             sleep(wait_interval)
             spent_time += wait_interval
             job_result = self.intelowl.get_job_by_id(job_id)
             status = job_result["status"]
+            self.log.debug(f"Job {job_id} status: {status}, spent time: {spent_time}s")
+
+        # Additionally wait for all analyzers to complete (SUCCESS or FAILED)
+        while not self._all_analyzers_completed(job_result) and spent_time <= max_job_time:
+            self.log.info(f"Job {job_id} completed but waiting for all analyzers to finish...")
+            sleep(wait_interval)
+            spent_time += wait_interval
+            job_result = self.intelowl.get_job_by_id(job_id)
+
+        if spent_time > max_job_time:
+            self.log.warning(f"Job {job_id} timed out after {spent_time}s. Some analyzers may not have completed.")
+        else:
+            self.log.info(f"Job {job_id} and all analyzers completed successfully.")
 
         return job_result
 
