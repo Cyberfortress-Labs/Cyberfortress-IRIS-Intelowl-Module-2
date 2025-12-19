@@ -86,15 +86,6 @@ module_configuration = [
         "type": "bool",
         "section": "Triggers"
     },
-    {
-        "param_name": "intelowl_on_alert_escalate_hook_enabled",
-        "param_human_name": "Triggers automatically on alert escalation",
-        "param_description": "Set to True to automatically process IOCs when alerts are escalated to a case",
-        "default": True,
-        "mandatory": True,
-        "type": "bool",
-        "section": "Triggers"
-    },
 
     {
         "param_name": "intelowl_report_as_attribute",
