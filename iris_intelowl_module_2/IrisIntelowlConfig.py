@@ -71,7 +71,7 @@ module_configuration = [
     {
         "param_name": "intelowl_on_create_hook_enabled",
         "param_human_name": "Triggers automatically on IOC create",
-        "param_description": "Set to True to automatically add a IntelOwl insight each time an IOC is created (includes merged alerts)",
+        "param_description": "Set to True to automatically add IntelOwl insight when IOCs are created. Includes IOCs added from merged alerts. Note: IOCs that already have IntelOwl reports will be skipped to avoid duplicates.",
         "default": True,
         "mandatory": True,
         "type": "bool",

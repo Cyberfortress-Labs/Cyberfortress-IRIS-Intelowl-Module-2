@@ -295,6 +295,32 @@ class IntelowlHandler(object):
 
         return job_result
 
+    def _ioc_has_intelowl_report(self, ioc) -> bool:
+        """
+        Check if IOC already has IntelOwl report attribute
+        
+        :param ioc: IOC instance
+        :return: True if report exists, False otherwise
+        """
+        try:
+            # Check if IOC has custom_attributes
+            if hasattr(ioc, 'custom_attributes') and ioc.custom_attributes:
+                # Parse custom attributes to check for IntelOwl Report tab
+                import json
+                if isinstance(ioc.custom_attributes, str):
+                    attrs = json.loads(ioc.custom_attributes)
+                else:
+                    attrs = ioc.custom_attributes
+                
+                # Check if IntelOwl Report tab exists
+                if 'IntelOwl Report' in attrs:
+                    self.log.info(f"IOC {ioc.ioc_value} already has IntelOwl report. Skipping.")
+                    return True
+        except Exception as e:
+            self.log.debug(f"Error checking IOC attributes: {e}")
+        
+        return False
+
     def handle_domain(self, ioc):
         """
         Handles an IOC of type domain and adds IntelOwl insights
@@ -302,6 +328,10 @@ class IntelowlHandler(object):
         :param ioc: IOC instance
         :return: IIStatus
         """
+        
+        # Skip if IOC already has IntelOwl report
+        if self._ioc_has_intelowl_report(ioc):
+            return InterfaceStatus.I2Success()
 
         self.log.info(f'Getting domain report for {ioc.ioc_value}')
 
@@ -357,6 +387,10 @@ class IntelowlHandler(object):
         :param ioc: IOC instance
         :return: IIStatus
         """
+        
+        # Skip if IOC already has IntelOwl report
+        if self._ioc_has_intelowl_report(ioc):
+            return InterfaceStatus.I2Success()
 
         self.log.info(f'Getting IP report for {ioc.ioc_value}')
 
@@ -411,6 +445,10 @@ class IntelowlHandler(object):
         :param ioc: IOC instance
         :return: IIStatus
         """
+        
+        # Skip if IOC already has IntelOwl report
+        if self._ioc_has_intelowl_report(ioc):
+            return InterfaceStatus.I2Success()
 
         self.log.info(f'Getting URL report for {ioc.ioc_value}')
 
@@ -465,6 +503,10 @@ class IntelowlHandler(object):
         :param ioc: IOC instance
         :return: IIStatus
         """
+        
+        # Skip if IOC already has IntelOwl report
+        if self._ioc_has_intelowl_report(ioc):
+            return InterfaceStatus.I2Success()
 
         self.log.info(f'Getting hash report for {ioc.ioc_value}')
 
@@ -519,6 +561,10 @@ class IntelowlHandler(object):
         :param ioc: IOC instance
         :return: IIStatus
         """
+        
+        # Skip if IOC already has IntelOwl report
+        if self._ioc_has_intelowl_report(ioc):
+            return InterfaceStatus.I2Success()
 
         self.log.info(f'Getting generic report for {ioc.ioc_value}')
 
