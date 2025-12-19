@@ -64,16 +64,16 @@ class IrisIntelowlInterface(IrisModuleInterface):
         else:
             self.deregister_from_hook(module_id=self.module_id, iris_hook_name='on_postload_ioc_update')
 
-        if module_conf.get('intelowl_on_alert_merge_hook_enabled'):
-            status = self.register_to_hook(module_id, iris_hook_name='on_postload_alert_merge')
+        if module_conf.get('intelowl_on_alert_escalate_hook_enabled'):
+            status = self.register_to_hook(module_id, iris_hook_name='on_postload_alert_escalate')
             if status.is_failure():
                 self.log.error(status.get_message())
                 self.log.error(status.get_data())
 
             else:
-                self.log.info("Successfully registered on_postload_alert_merge hook")
+                self.log.info("Successfully registered on_postload_alert_escalate hook")
         else:
-            self.deregister_from_hook(module_id=self.module_id, iris_hook_name='on_postload_alert_merge')
+            self.deregister_from_hook(module_id=self.module_id, iris_hook_name='on_postload_alert_escalate')
 
         if module_conf.get('intelowl_manual_hook_enabled'):
             status = self.register_to_hook(module_id, iris_hook_name='on_manual_trigger_ioc',
@@ -102,8 +102,8 @@ class IrisIntelowlInterface(IrisModuleInterface):
         if hook_name in ['on_postload_ioc_create', 'on_postload_ioc_update', 'on_manual_trigger_ioc']:
             status = self._handle_ioc(data=data)
 
-        elif hook_name == 'on_postload_alert_merge':
-            status = self._handle_alert_merge(data=data)
+        elif hook_name == 'on_postload_alert_escalate':
+            status = self._handle_alert_escalate(data=data)
 
         else:
             self.log.critical(f'Received unsupported hook {hook_name}')
@@ -158,16 +158,16 @@ class IrisIntelowlInterface(IrisModuleInterface):
 
         return in_status(data=data)
 
-    def _handle_alert_merge(self, data) -> InterfaceStatus.IIStatus:
+    def _handle_alert_escalate(self, data) -> InterfaceStatus.IIStatus:
         """
-        Handle alert merge events. When alerts are merged into a case, 
-        this method processes all IOCs from the merged case.
+        Handle alert escalation events. When alerts are escalated to a case, 
+        this method processes all IOCs from the resulting case.
 
         :param data: Data associated to the hook, here case object(s) with IOCs
         :return: IIStatus
         """
-        self.log.info("Processing alert merge hook - retrieving IOCs from merged case")
-        self.log.debug(f"Alert merge data type: {type(data)}")
+        self.log.info("Processing alert escalate hook - retrieving IOCs from case")
+        self.log.debug(f"Alert escalate data type: {type(data)}")
         
         intelowl_handler = IntelowlHandler(mod_config=self.module_dict_conf,
                                            server_config=self.server_dict_conf,
