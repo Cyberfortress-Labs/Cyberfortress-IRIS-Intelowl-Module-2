@@ -64,6 +64,17 @@ class IrisIntelowlInterface(IrisModuleInterface):
         else:
             self.deregister_from_hook(module_id=self.module_id, iris_hook_name='on_postload_ioc_update')
 
+        if module_conf.get('intelowl_on_alert_merge_hook_enabled'):
+            status = self.register_to_hook(module_id, iris_hook_name='on_postload_alert_merge')
+            if status.is_failure():
+                self.log.error(status.get_message())
+                self.log.error(status.get_data())
+
+            else:
+                self.log.info("Successfully registered on_postload_alert_merge hook")
+        else:
+            self.deregister_from_hook(module_id=self.module_id, iris_hook_name='on_postload_alert_merge')
+
         if module_conf.get('intelowl_manual_hook_enabled'):
             status = self.register_to_hook(module_id, iris_hook_name='on_manual_trigger_ioc',
                                            manual_hook_name='Get IntelOwl insight')
@@ -90,6 +101,9 @@ class IrisIntelowlInterface(IrisModuleInterface):
         self.log.info(f'Received {hook_name}')
         if hook_name in ['on_postload_ioc_create', 'on_postload_ioc_update', 'on_manual_trigger_ioc']:
             status = self._handle_ioc(data=data)
+
+        elif hook_name == 'on_postload_alert_merge':
+            status = self._handle_alert_merge(data=data)
 
         else:
             self.log.critical(f'Received unsupported hook {hook_name}')
@@ -141,5 +155,56 @@ class IrisIntelowlInterface(IrisModuleInterface):
 
             #else:
             #    self.log.error(f'IOC type {element.ioc_type.type_name} not handled by intelowl module. Skipping')
+
+        return in_status(data=data)
+
+    def _handle_alert_merge(self, data) -> InterfaceStatus.IIStatus:
+        """
+        Handle alert merge events. When alerts are merged into a case, 
+        this method processes all IOCs from the merged case.
+
+        :param data: Data associated to the hook, here case object with IOCs
+        :return: IIStatus
+        """
+        self.log.info("Processing alert merge hook - retrieving IOCs from merged case")
+        
+        intelowl_handler = IntelowlHandler(mod_config=self.module_dict_conf,
+                                           server_config=self.server_dict_conf,
+                                           logger=self.log)
+
+        in_status = InterfaceStatus.IIStatus(code=InterfaceStatus.I2CodeNoError)
+
+        # The data from on_postload_alert_merge should contain the case with IOCs
+        # We need to extract and process all IOCs from the merged case
+        try:
+            # Check if data is a case object with iocs attribute
+            if hasattr(data, 'iocs'):
+                iocs = data.iocs
+                self.log.info(f"Found {len(iocs)} IOCs in merged case")
+                
+                for ioc in iocs:
+                    # Process each IOC type
+                    if 'ip-' in ioc.ioc_type.type_name:
+                        status = intelowl_handler.handle_ip(ioc=ioc)
+                        in_status = InterfaceStatus.merge_status(in_status, status)
+                    elif 'domain' in ioc.ioc_type.type_name:
+                        status = intelowl_handler.handle_domain(ioc=ioc)
+                        in_status = InterfaceStatus.merge_status(in_status, status)
+                    elif 'url' in ioc.ioc_type.type_name:
+                        status = intelowl_handler.handle_url(ioc=ioc)
+                        in_status = InterfaceStatus.merge_status(in_status, status)
+                    elif ioc.ioc_type.type_name in ['md5', 'sha1', 'sha224', 'sha256', 'sha512']:
+                        status = intelowl_handler.handle_hash(ioc=ioc)
+                        in_status = InterfaceStatus.merge_status(in_status, status)
+                    else:
+                        status = intelowl_handler.handle_generic(ioc=ioc)
+                        in_status = InterfaceStatus.merge_status(in_status, status)
+            else:
+                self.log.warning("Alert merge data does not contain IOCs attribute")
+                
+        except Exception as e:
+            self.log.error(f"Error processing alert merge: {str(e)}")
+            self.log.error(traceback.format_exc())
+            return InterfaceStatus.IIStatus(code=InterfaceStatus.I2CodeError)
 
         return in_status(data=data)

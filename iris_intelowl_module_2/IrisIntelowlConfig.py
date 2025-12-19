@@ -86,6 +86,15 @@ module_configuration = [
         "type": "bool",
         "section": "Triggers"
     },
+    {
+        "param_name": "intelowl_on_alert_merge_hook_enabled",
+        "param_human_name": "Triggers automatically on alert merge",
+        "param_description": "Set to True to automatically process IOCs when alerts are merged into a case",
+        "default": True,
+        "mandatory": True,
+        "type": "bool",
+        "section": "Triggers"
+    },
 
     {
         "param_name": "intelowl_report_as_attribute",
