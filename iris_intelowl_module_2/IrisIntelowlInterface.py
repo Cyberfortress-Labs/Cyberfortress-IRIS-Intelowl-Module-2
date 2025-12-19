@@ -163,10 +163,11 @@ class IrisIntelowlInterface(IrisModuleInterface):
         Handle alert merge events. When alerts are merged into a case, 
         this method processes all IOCs from the merged case.
 
-        :param data: Data associated to the hook, here case object with IOCs
+        :param data: Data associated to the hook, here case object(s) with IOCs
         :return: IIStatus
         """
         self.log.info("Processing alert merge hook - retrieving IOCs from merged case")
+        self.log.debug(f"Alert merge data type: {type(data)}")
         
         intelowl_handler = IntelowlHandler(mod_config=self.module_dict_conf,
                                            server_config=self.server_dict_conf,
@@ -174,33 +175,39 @@ class IrisIntelowlInterface(IrisModuleInterface):
 
         in_status = InterfaceStatus.IIStatus(code=InterfaceStatus.I2CodeNoError)
 
-        # The data from on_postload_alert_merge should contain the case with IOCs
-        # We need to extract and process all IOCs from the merged case
         try:
-            # Check if data is a case object with iocs attribute
-            if hasattr(data, 'iocs'):
-                iocs = data.iocs
-                self.log.info(f"Found {len(iocs)} IOCs in merged case")
+            # Data from on_postload_alert_merge could be a list or single case object
+            cases = data if isinstance(data, list) else [data]
+            
+            for case in cases:
+                self.log.info(f"Processing case: {case}")
                 
-                for ioc in iocs:
-                    # Process each IOC type
-                    if 'ip-' in ioc.ioc_type.type_name:
-                        status = intelowl_handler.handle_ip(ioc=ioc)
-                        in_status = InterfaceStatus.merge_status(in_status, status)
-                    elif 'domain' in ioc.ioc_type.type_name:
-                        status = intelowl_handler.handle_domain(ioc=ioc)
-                        in_status = InterfaceStatus.merge_status(in_status, status)
-                    elif 'url' in ioc.ioc_type.type_name:
-                        status = intelowl_handler.handle_url(ioc=ioc)
-                        in_status = InterfaceStatus.merge_status(in_status, status)
-                    elif ioc.ioc_type.type_name in ['md5', 'sha1', 'sha224', 'sha256', 'sha512']:
-                        status = intelowl_handler.handle_hash(ioc=ioc)
-                        in_status = InterfaceStatus.merge_status(in_status, status)
-                    else:
-                        status = intelowl_handler.handle_generic(ioc=ioc)
-                        in_status = InterfaceStatus.merge_status(in_status, status)
-            else:
-                self.log.warning("Alert merge data does not contain IOCs attribute")
+                # Check if case has iocs attribute
+                if hasattr(case, 'iocs'):
+                    iocs = case.iocs
+                    self.log.info(f"Found {len(iocs)} IOCs in merged case")
+                    
+                    for ioc in iocs:
+                        self.log.debug(f"Processing IOC: {ioc.ioc_value} of type {ioc.ioc_type.type_name}")
+                        
+                        # Process each IOC type
+                        if 'ip-' in ioc.ioc_type.type_name:
+                            status = intelowl_handler.handle_ip(ioc=ioc)
+                            in_status = InterfaceStatus.merge_status(in_status, status)
+                        elif 'domain' in ioc.ioc_type.type_name:
+                            status = intelowl_handler.handle_domain(ioc=ioc)
+                            in_status = InterfaceStatus.merge_status(in_status, status)
+                        elif 'url' in ioc.ioc_type.type_name:
+                            status = intelowl_handler.handle_url(ioc=ioc)
+                            in_status = InterfaceStatus.merge_status(in_status, status)
+                        elif ioc.ioc_type.type_name in ['md5', 'sha1', 'sha224', 'sha256', 'sha512']:
+                            status = intelowl_handler.handle_hash(ioc=ioc)
+                            in_status = InterfaceStatus.merge_status(in_status, status)
+                        else:
+                            status = intelowl_handler.handle_generic(ioc=ioc)
+                            in_status = InterfaceStatus.merge_status(in_status, status)
+                else:
+                    self.log.warning(f"Case object does not have iocs attribute. Available attributes: {dir(case)}")
                 
         except Exception as e:
             self.log.error(f"Error processing alert merge: {str(e)}")
