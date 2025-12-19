@@ -86,6 +86,15 @@ module_configuration = [
         "type": "bool",
         "section": "Triggers"
     },
+    {
+        "param_name": "intelowl_on_case_update_hook_enabled",
+        "param_human_name": "Triggers on case update (for merged alerts)",
+        "param_description": "Set to True to process IOCs when a case is updated (e.g., when alerts with IOCs are merged). This ensures new IOCs from merged alerts are analyzed.",
+        "default": True,
+        "mandatory": True,
+        "type": "bool",
+        "section": "Triggers"
+    },
 
     {
         "param_name": "intelowl_report_as_attribute",
