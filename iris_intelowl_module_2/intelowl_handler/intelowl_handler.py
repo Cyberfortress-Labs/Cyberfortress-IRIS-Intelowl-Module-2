@@ -379,11 +379,12 @@ class IntelowlHandler(object):
                 "module_name": "iris_misp_module",
                 "hook_ui_name": "Search on MISP",
                 "type": "ioc",
-                "targets": [{"id": ioc.ioc_id}]
+                "targets": [{"ioc_id": ioc.ioc_id}]
             }
             
             self.log.info(f"Calling IrisMISP module for IOC {ioc.ioc_value} (ID: {ioc.ioc_id})")
             self.log.info(f"IRIS API URL: {iris_url}")
+            self.log.info(f"Payload: {payload}")
             
             response = requests.post(
                 iris_url,
