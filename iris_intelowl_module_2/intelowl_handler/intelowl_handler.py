@@ -16,6 +16,7 @@ from jinja2 import Template
 
 import iris_interface.IrisInterfaceStatus as InterfaceStatus
 from app.datamgmt.manage.manage_attribute_db import add_tab_attribute_field
+from app.models import IocLink
 
 from pyintelowl import IntelOwl, IntelOwlClientException
 from time import sleep
@@ -492,12 +493,16 @@ class IntelowlHandler(object):
                 self.log.info(f'MISP lookup disabled for private IPs. Skipping {ip}')
                 return InterfaceStatus.I2Success()
             
-            # Get case_id from IOC
+            # Get case_id from IocLink (vì IOC không có trực tiếp case_id)
             try:
-                case_id = ioc.case_id if hasattr(ioc, 'case_id') else None
-                if not case_id:
-                    self.log.warning(f'Could not get case_id for IOC {ip}. Skipping MISP lookup.')
+                ioc_id = ioc.ioc_id
+                ioc_link = IocLink.query.filter(IocLink.ioc_id == ioc_id).first()
+                if not ioc_link:
+                    self.log.warning(f'Cannot find case_id for IOC {ip} (ioc_id: {ioc_id}). Skipping MISP lookup.')
                     return InterfaceStatus.I2Success()
+                
+                case_id = ioc_link.case_id
+                self.log.info(f'Found case_id: {case_id} for IOC {ip}')
             except Exception as e:
                 self.log.warning(f'Error getting case_id: {e}. Skipping MISP lookup.')
                 return InterfaceStatus.I2Success()
