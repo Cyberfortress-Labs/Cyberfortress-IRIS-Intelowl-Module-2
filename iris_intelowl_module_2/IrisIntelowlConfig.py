@@ -60,6 +60,14 @@ module_configuration = [
         "type": "string"
     },
     {
+        "param_name": "intelowl_private_ip_playbook_name",
+        "param_human_name": "IntelOwl Playbook for Private IPs",
+        "param_description": "Name of the playbook to use for private IP analysis (e.g MISP_ONLY). Leave empty to skip private IP analysis.",
+        "default": "",
+        "mandatory": False,
+        "type": "string"
+    },
+    {
         "param_name": "intelowl_manual_hook_enabled",
         "param_human_name": "Manual triggers on IOCs",
         "param_description": "Set to True to offers possibility to manually triggers the module via the UI",

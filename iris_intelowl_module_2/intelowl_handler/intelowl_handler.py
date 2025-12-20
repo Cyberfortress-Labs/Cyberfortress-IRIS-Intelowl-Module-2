@@ -10,6 +10,7 @@
 
 
 import traceback
+import ipaddress
 from jinja2 import Template
 
 import iris_interface.IrisInterfaceStatus as InterfaceStatus
@@ -321,6 +322,30 @@ class IntelowlHandler(object):
         
         return False
 
+    def _is_private_ip(self, ip_str: str) -> bool:
+        """
+        Check if the given IP address is a private IP (RFC 1918) or reserved.
+        
+        Private IP ranges:
+        - 10.0.0.0/8
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+        - 127.0.0.0/8 (loopback)
+        - 169.254.0.0/16 (link-local)
+        
+        :param ip_str: IP address string to check
+        :return: True if private/reserved, False if public
+        """
+        try:
+            ip_obj = ipaddress.ip_address(ip_str)
+            is_private = ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_link_local or ip_obj.is_reserved
+            if is_private:
+                self.log.info(f"IP {ip_str} is a private/reserved IP address")
+            return is_private
+        except ValueError as e:
+            self.log.warning(f"Invalid IP address format '{ip_str}': {e}")
+            return False
+
     def handle_domain(self, ioc):
         """
         Handles an IOC of type domain and adds IntelOwl insights
@@ -382,7 +407,8 @@ class IntelowlHandler(object):
 
     def handle_ip(self, ioc):
         """
-        Handles an IOC of type ip and adds IntelOwl insights
+        Handles an IOC of type ip and adds IntelOwl insights.
+        Uses different playbooks for private vs public IPs.
 
         :param ioc: IOC instance
         :return: IIStatus
@@ -392,10 +418,21 @@ class IntelowlHandler(object):
         if self._ioc_has_intelowl_report(ioc):
             return InterfaceStatus.I2Success()
 
-        self.log.info(f'Getting IP report for {ioc.ioc_value}')
-
         ip = ioc.ioc_value
-        playbook_name = self.mod_config.get("intelowl_playbook_name")
+        
+        # Determine which playbook to use based on IP type
+        if self._is_private_ip(ip):
+            playbook_name = self.mod_config.get("intelowl_private_ip_playbook_name", "").strip()
+            if not playbook_name:
+                self.log.info(f'Skipping private IP {ip} - no private IP playbook configured')
+                return InterfaceStatus.I2Success()
+            self.log.info(f'Using private IP playbook "{playbook_name}" for {ip}')
+        else:
+            playbook_name = self.mod_config.get("intelowl_playbook_name")
+            self.log.info(f'Using standard playbook "{playbook_name}" for public IP {ip}')
+
+        self.log.info(f'Getting IP report for {ip}')
+
         try:
             query_result = self.intelowl.send_observable_analysis_playbook_request(observable_name=ip,
                                                                                    playbook_requested=playbook_name,
