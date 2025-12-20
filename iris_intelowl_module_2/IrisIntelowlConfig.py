@@ -8,7 +8,7 @@
 #
 #  License Apache Software License 3.0
 
-module_name = "Iris IntelOwl 2"
+module_name = "IrisIntelOwl+"
 module_description = "Provides a connector with IntelOwl - allows to pull insights from IntelOwl analyzers (v0.1.1 Updated)"
 interface_version = "1.2.0"
 module_version = "0.1.1"
@@ -71,7 +71,7 @@ module_configuration = [
     {
         "param_name": "intelowl_on_create_hook_enabled",
         "param_human_name": "Triggers automatically on IOC create",
-        "param_description": "Set to True to automatically add IntelOwl insight when IOCs are created. Includes IOCs added from merged alerts. Note: IOCs that already have IntelOwl reports will be skipped to avoid duplicates.",
+        "param_description": "Set to True to automatically analyze IOCs when created. Note: IOCs from merged alerts must be analyzed manually using 'Enrich IOC with IntelOwl' option.",
         "default": True,
         "mandatory": True,
         "type": "bool",
@@ -82,15 +82,6 @@ module_configuration = [
         "param_human_name": "Triggers automatically on IOC update",
         "param_description": "Set to True to automatically add a IntelOwl insight each time an IOC is updated",
         "default": False,
-        "mandatory": True,
-        "type": "bool",
-        "section": "Triggers"
-    },
-    {
-        "param_name": "intelowl_on_case_update_hook_enabled",
-        "param_human_name": "Triggers on case update (for merged alerts)",
-        "param_description": "Set to True to process IOCs when a case is updated (e.g., when alerts with IOCs are merged). This ensures new IOCs from merged alerts are analyzed.",
-        "default": True,
         "mandatory": True,
         "type": "bool",
         "section": "Triggers"
