@@ -60,33 +60,6 @@ module_configuration = [
         "type": "string"
     },
     {
-        "param_name": "intelowl_private_ip_misp_enabled",
-        "param_human_name": "Enable MISP lookup for Private IPs",
-        "param_description": "Set to True to automatically call IrisMISP module for private IP addresses (10.x.x.x, 192.168.x.x, 172.16-31.x.x). IntelOwl rejects private IPs, so this calls MISP directly via IRIS API.",
-        "default": True,
-        "mandatory": False,
-        "type": "bool",
-        "section": "Private IP Handling"
-    },
-    {
-        "param_name": "iris_internal_url",
-        "param_human_name": "IRIS Internal API URL",
-        "param_description": "Internal URL for IRIS API (used to call other modules like IrisMISP). Default: http://app:8000 for Docker network.",
-        "default": "https://localhost",
-        "mandatory": False,
-        "type": "string",
-        "section": "Private IP Handling"
-    },
-    {
-        "param_name": "iris_api_key",
-        "param_human_name": "IRIS API Key",
-        "param_description": "API key for authenticating with IRIS internal API. Required for calling other modules like IrisMISP for private IPs.",
-        "default": "",
-        "mandatory": False,
-        "type": "sensitive_string",
-        "section": "Private IP Handling"
-    },
-    {
         "param_name": "intelowl_manual_hook_enabled",
         "param_human_name": "Manual triggers on IOCs",
         "param_description": "Set to True to offers possibility to manually triggers the module via the UI",

@@ -11,12 +11,10 @@
 
 import traceback
 import ipaddress
-import requests
 from jinja2 import Template
 
 import iris_interface.IrisInterfaceStatus as InterfaceStatus
 from app.datamgmt.manage.manage_attribute_db import add_tab_attribute_field
-from app.models import IocLink
 
 from pyintelowl import IntelOwl, IntelOwlClientException
 from time import sleep
@@ -348,67 +346,6 @@ class IntelowlHandler(object):
             self.log.warning(f"Invalid IP address format '{ip_str}': {e}")
             return False
 
-    def _call_iris_misp_module(self, ioc, case_id: int) -> InterfaceStatus.IIStatus:
-        """
-        Call IRIS internal API to trigger IrisMISP module for the given IOC.
-        This is used for private IPs that IntelOwl cannot process.
-        
-        :param ioc: IOC instance
-        :param case_id: Case ID
-        :return: IIStatus
-        """
-        try:
-            # Get IRIS URL and API key from module config
-            iris_base_url = self.mod_config.get('iris_internal_url', 'http://app:8000').rstrip('/')
-            iris_url = f"{iris_base_url}/dim/hooks/call"
-            
-            # Get API key from module config
-            api_key = self.mod_config.get('iris_api_key', '')
-            
-            if not api_key:
-                self.log.warning("IRIS API key not configured. Cannot call IrisMISP module.")
-                return InterfaceStatus.I2Success()
-            
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            }
-            
-            payload = {
-                "hook_name": "on_manual_trigger_ioc",
-                "module_name": "iris_misp_module",
-                "hook_ui_name": "Search on MISP",
-                "type": "ioc",
-                "targets": [{"ioc_id": ioc.ioc_id}]
-            }
-            
-            self.log.info(f"Calling IrisMISP module for IOC {ioc.ioc_value} (ID: {ioc.ioc_id})")
-            self.log.info(f"IRIS API URL: {iris_url}")
-            self.log.info(f"Payload: {payload}")
-            
-            response = requests.post(
-                iris_url,
-                headers=headers,
-                json=payload,
-                params={"cid": case_id},
-                timeout=30,
-                verify=False  # Internal container communication
-            )
-            
-            if response.status_code == 200:
-                self.log.info(f"Successfully triggered IrisMISP module for {ioc.ioc_value}")
-                return InterfaceStatus.I2Success()
-            else:
-                self.log.error(f"Failed to call IrisMISP: {response.status_code} - {response.text}")
-                return InterfaceStatus.I2Error(f"IrisMISP call failed: {response.status_code}")
-                
-        except requests.exceptions.RequestException as e:
-            self.log.error(f"Error calling IrisMISP module: {e}")
-            return InterfaceStatus.I2Error(str(e))
-        except Exception as e:
-            self.log.error(f"Unexpected error calling IrisMISP: {traceback.format_exc()}")
-            return InterfaceStatus.I2Error(str(e))
-
     def handle_domain(self, ioc):
         """
         Handles an IOC of type domain and adds IntelOwl insights
@@ -471,8 +408,7 @@ class IntelowlHandler(object):
     def handle_ip(self, ioc):
         """
         Handles an IOC of type ip and adds IntelOwl insights.
-        For private IPs, calls IrisMISP module directly since IntelOwl rejects private addresses.
-        For public IPs, uses the standard IntelOwl playbook.
+        Private IPs are skipped since IntelOwl rejects them.
 
         :param ioc: IOC instance
         :return: IIStatus
@@ -484,35 +420,13 @@ class IntelowlHandler(object):
 
         ip = ioc.ioc_value
         
-        # For private IPs, call IrisMISP module directly instead of IntelOwl
+        # Skip private IPs - IntelOwl rejects them
         if self._is_private_ip(ip):
-            self.log.info(f'Private IP detected: {ip}. Calling IrisMISP module directly.')
-            
-            # Check if MISP lookup is enabled for private IPs
-            enable_misp_for_private = self.mod_config.get("intelowl_private_ip_misp_enabled", True)
-            if not enable_misp_for_private:
-                self.log.info(f'MISP lookup disabled for private IPs. Skipping {ip}')
-                return InterfaceStatus.I2Success()
-            
-            # Get case_id from IocLink (vì IOC không có trực tiếp case_id)
-            try:
-                ioc_id = ioc.ioc_id
-                ioc_link = IocLink.query.filter(IocLink.ioc_id == ioc_id).first()
-                if not ioc_link:
-                    self.log.warning(f'Cannot find case_id for IOC {ip} (ioc_id: {ioc_id}). Skipping MISP lookup.')
-                    return InterfaceStatus.I2Success()
-                
-                case_id = ioc_link.case_id
-                self.log.info(f'Found case_id: {case_id} for IOC {ip}')
-            except Exception as e:
-                self.log.warning(f'Error getting case_id: {e}. Skipping MISP lookup.')
-                return InterfaceStatus.I2Success()
-            
-            return self._call_iris_misp_module(ioc, case_id)
+            self.log.info(f'Skipping private IP {ip} - IntelOwl does not support private addresses')
+            return InterfaceStatus.I2Success()
         
         # For public IPs, use standard IntelOwl playbook
         playbook_name = self.mod_config.get("intelowl_playbook_name")
-        self.log.info(f'Using standard playbook "{playbook_name}" for public IP {ip}')
         self.log.info(f'Getting IP report for {ip}')
 
         try:
